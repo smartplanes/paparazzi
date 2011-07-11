@@ -47,6 +47,8 @@ extern bool_t uart0_check_free_space( uint8_t len);
 
 #define Uart0TxRunning uart0_tx_running
 #define Uart0InitParam uart0_init_param
+#define UART0TxRunning uart0_tx_running
+#define UART0InitParam uart0_init_param
 
 /* I want to trigger USE_UART and generate macros with the makefile same variable */
 #define UART0Init           Uart0Init
@@ -71,6 +73,8 @@ extern bool_t uart1_check_free_space( uint8_t len);
 
 #define Uart1TxRunning uart1_tx_running
 #define Uart1InitParam uart1_init_param
+#define UART1TxRunning uart1_tx_running
+#define UART1InitParam uart1_init_param
 
 #define UART1Init           Uart1Init
 #define UART1CheckFreeSpace Uart1CheckFreeSpace
@@ -120,5 +124,25 @@ extern bool_t uart3_check_free_space( uint8_t len);
 #define UART3Getch          Uart3Getch
 
 #endif /* USE_UART3 */
+
+#ifdef USE_UART5
+
+extern void   uart5_init( void );
+extern void   uart5_transmit( uint8_t data );
+extern bool_t uart5_check_free_space( uint8_t len);
+
+#define Uart5Init uart5_init
+#define Uart5CheckFreeSpace(_x) uart5_check_free_space(_x)
+#define Uart5Transmit(_x)       uart5_transmit(_x)
+#define Uart5SendMessage() {}
+
+#define UART5Init           Uart5Init
+#define UART5CheckFreeSpace Uart5CheckFreeSpace
+#define UART5Transmit       Uart5Transmit
+#define UART5SendMessage    Uart5SendMessage
+#define UART5ChAvailable    Uart5ChAvailable
+#define UART5Getch          Uart5Getch
+
+#endif /* USE_UART5 */
 
 #endif /* MCU_PERIPH_UART_H */

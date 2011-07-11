@@ -16,26 +16,25 @@
 //#define DEBUG 1
 
 
-#define CM_OF_M(_m) ((_m)*1e2)
-#define M_OF_CM(_cm) ((_cm)/1e2)
-#define EM7RAD_OF_RAD(_r) (_r*1e7)
-#define RAD_OF_EM7RAD(_r) (_r/1e7)
-
+static void test_lla_of_utm(void);
 static void test_floats(void);
 static void test_doubles(void);
-static void  test_enu_of_ecef_int(void);
+static void test_enu_of_ecef_int(void);
 static void test_ned_to_ecef_to_ned(void);
 static void test_enu_to_ecef_to_enu( void );
 
 /*
- * toulouse 43.6052765, 1.4427764, 180.123019274324 -> 4624497.0 116475.0 4376563.0
+ * toulouse lat 43.6052765, lon 1.4427764, alt 180.123019274324 -> x 4624497.0 y 116475.0 z 4376563.0
  */
 
 int main(int argc, char** argv) {
 
-  test_floats();
-  test_doubles();
-  //  test_enu_of_ecef_int();
+  //test_floats();
+  //test_doubles();
+
+  test_lla_of_utm();
+
+  //test_enu_of_ecef_int();
   //  test_ned_to_ecef_to_ned();
 
   // test_enu_to_ecef_to_enu();
@@ -43,6 +42,27 @@ int main(int argc, char** argv) {
 
 }
 
+static void test_lla_of_utm(void) {
+  printf("\n--- lla of UTM double ---\n");
+
+  struct UtmCoor_d utm_d = { .east=348805.71, .north=4759354.89, .zone=31 };
+  struct LlaCoor_d lla_d;
+  struct LlaCoor_d l_ref_d = {.lat=0.749999999392454875,
+                            .lon=0.019999999054505127};
+  lla_of_utm_d(&lla_d, &utm_d);
+  printf("    lat=%.16f     lon=%.16f\nref_lat=%.16f ref_lon=%.16f\n",
+         lla_d.lat, lla_d.lon, l_ref_d.lat, l_ref_d.lon);
+
+  printf("\n--- lla of UTM float ---\n");
+
+  struct UtmCoor_f utm_f = { .east=348805.71, .north=4759354.89, .zone=31 };
+  struct LlaCoor_f lla_f;
+  struct LlaCoor_f l_ref_f = {.lat=0.749999999392454875,
+                            .lon=0.019999999054505127};
+  lla_of_utm_f(&lla_f, &utm_f);
+  printf("    lat=%.16f     lon=%.16f\nref_lat=%.16f ref_lon=%.16f\n",
+         lla_f.lat, lla_f.lon, l_ref_f.lat, l_ref_f.lon);
+}
 
 static void test_floats(void) {
 
@@ -111,10 +131,10 @@ static void test_enu_of_ecef_int(void) {
   printf("ecef0 : (%d,%d,%d)\n", ref_coor_i.x, ref_coor_i.y, ref_coor_i.z);
   struct LtpDef_i ltp_def_i;
   ltp_def_from_ecef_i(&ltp_def_i, &ref_coor_i);
-  printf("lla0 : (%d %d %d) (%f,%f,%f)\n", ltp_def_i.lla.lat, ltp_def_i.lla.lon, ltp_def_i.lla.alt,
+  printf("lla0 : (%f deg, %f deg, %f m)  (%f,%f,%f)\n", DegOfRad(ltp_def_f.lla.lat), DegOfRad(ltp_def_f.lla.lon), ltp_def_f.lla.alt,
 	 DegOfRad(RAD_OF_EM7RAD((double)ltp_def_i.lla.lat)),
 	 DegOfRad(RAD_OF_EM7RAD((double)ltp_def_i.lla.lon)),
-	 M_OF_CM((double)ltp_def_i.lla.alt));
+	 M_OF_MM((double)ltp_def_i.lla.alt));
 
 #define STEP    1000.
 #define RANGE 100000.
@@ -152,11 +172,11 @@ static void test_enu_of_ecef_int(void) {
 	       M_OF_CM((double)my_enu_point_i.z));
 #endif
 
-	FLOAT_T ex = my_enu_point_f.x - M_OF_CM((double)my_enu_point_i.x);
+	float ex = my_enu_point_f.x - M_OF_CM((double)my_enu_point_i.x);
 	if (fabs(ex) > max_err.x) max_err.x = fabs(ex);
-	FLOAT_T ey = my_enu_point_f.y - M_OF_CM((double)my_enu_point_i.y);
+	float ey = my_enu_point_f.y - M_OF_CM((double)my_enu_point_i.y);
 	if (fabs(ey) > max_err.y) max_err.y = fabs(ey);
-	FLOAT_T ez = my_enu_point_f.z - M_OF_CM((double)my_enu_point_i.z);
+	float ez = my_enu_point_f.z - M_OF_CM((double)my_enu_point_i.z);
 	if (fabs(ez) > max_err.z) max_err.z = fabs(ez);
 	sum_err += ex*ex + ey*ey + ez*ez;
       }

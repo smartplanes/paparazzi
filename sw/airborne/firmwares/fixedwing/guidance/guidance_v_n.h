@@ -36,12 +36,18 @@
 #define V_CTL_SPEED_GROUNDSPEED 2
 
 extern float v_ctl_auto_pitch_dgain;
+extern float v_ctl_auto_airspeed_throttle_pgain;
+extern float v_ctl_auto_airspeed_throttle_dgain;
+extern float v_ctl_auto_airspeed_throttle_igain;
+extern float v_ctl_auto_airspeed_throttle_sum_err;
+extern float v_ctl_auto_airspeed_pitch_pgain;
+extern float v_ctl_auto_airspeed_pitch_dgain;
+extern float v_ctl_auto_airspeed_pitch_igain;
+extern float v_ctl_auto_airspeed_pitch_sum_err;
 
 extern uint8_t v_ctl_speed_mode;
 
-#ifdef PITCH_TRIM
 extern float v_ctl_pitch_loiter_trim;
 extern float v_ctl_pitch_dash_trim;
-#endif
 
 #endif /* FW_V_CTL_N_H */

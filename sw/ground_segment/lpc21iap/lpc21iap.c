@@ -24,7 +24,7 @@
 
 
 #define LPC21IAP_VER_MAJ    1
-#define LPC21IAP_VER_MIN    1
+#define LPC21IAP_VER_MIN    3
 
 
 #if defined(_WIN32) && !defined(__CYGWIN__)
@@ -156,9 +156,10 @@ int main(int argc, char *argv[])
     tIntermediateBuffer* actBuf = NULL;
     tIntermediateBuffer* startBuf = NULL;
 
+    printf("lpc21iap v%d.%d\n", LPC21IAP_VER_MAJ, LPC21IAP_VER_MIN);
+
     if ((argc < 2) || (argc > 3))
     {
-        printf("lpc21iap version v%d.%d, ", LPC21IAP_VER_MAJ, LPC21IAP_VER_MIN);
         printf("usage: %s file.elf [usb_serial_number]\n", argv[0]);
         exit(1);
     }
@@ -353,6 +354,12 @@ int main(int argc, char *argv[])
         exit(2);
     }
 
+    /* flashing code: persistent settings needs highest sector to be erased */
+    if (highFlash >= BOOTLOAD_SECT*MAX_SECT)
+    {
+      highFlash = maxFlash-1;
+    }
+
     /* anything to flash erase? */
     if (lowFlash != maxFlash)
     {
@@ -465,7 +472,7 @@ int main(int argc, char *argv[])
                         /* number of bytes in the last sector */
                         splitCnt = end % MAX_SECT;
                     }
-                    if (splitCnt != MAX_SECT)
+                    if ((splitCnt != MAX_SECT) && (splitCnt > 0))
                     {
                         /* keep partly filled pages for later programming */
                         actBuf = startBuf;

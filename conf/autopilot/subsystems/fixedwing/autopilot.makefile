@@ -81,6 +81,11 @@ $(TARGET).srcs += sys_time.c
 $(TARGET).CFLAGS 	+= -DINTER_MCU
 $(TARGET).srcs 		+= $(SRC_FIXEDWING)/inter_mcu.c
 
+#
+# Math functions
+#
+$(TARGET).srcs += math/pprz_geodetic_int.c math/pprz_geodetic_float.c math/pprz_geodetic_double.c math/pprz_trig_int.c
+
 ######################################################################
 ##
 ## COMMON FOR ALL NON-SIMULATION TARGETS
@@ -133,6 +138,8 @@ ns_srcs 		+= $(SRC_ARCH)/sys_time_hw.c
 #
 
 ns_srcs 		+= $(SRC_ARCH)/mcu_periph/uart_arch.c
+ns_srcs 		+= subsystems/settings.c
+ns_srcs 		+= $(SRC_ARCH)/subsystems/settings_arch.c
 
 #
 # ANALOG
@@ -142,6 +149,7 @@ ns_srcs 		+= $(SRC_ARCH)/mcu_periph/uart_arch.c
 #ifeq ($(ARCH), lpc21)
   ns_srcs 		+= $(SRC_ARCH)/mcu_periph/adc_arch.c
 ifeq ($(ARCH), stm32)
+  ns_CFLAGS 		+= -DUSE_AD1 -DUSE_AD1_1 -DUSE_AD1_2 -DUSE_AD1_3 -DUSE_AD1_4
   ns_CFLAGS 		+= -DUSE_ADC1_2_IRQ_HANDLER
 endif
 
@@ -185,11 +193,15 @@ sim.srcs 		+= $(SRC_ARCH)/sim_ap.c
 sim.CFLAGS 		+= -DDOWNLINK -DDOWNLINK_TRANSPORT=IvyTransport
 sim.srcs 		+= downlink.c $(SRC_FIRMWARE)/datalink.c $(SRC_ARCH)/sim_gps.c $(SRC_ARCH)/ivy_transport.c $(SRC_ARCH)/sim_adc_generic.c
 
+sim.srcs 		+= subsystems/settings.c
+sim.srcs 		+= $(SRC_ARCH)/subsystems/settings_arch.c
+
 ######################################################################
 ##
 ## JSBSIM THREAD SPECIFIC
 ##
 
+OCAMLLIBDIR=$(shell ocamlc -where)
 JSBSIM_INC = /usr/include/JSBSim
 #JSBSIM_LIB = /usr/lib
 
@@ -197,14 +209,17 @@ jsbsim.CFLAGS 		+= $(fbw_CFLAGS) $(ap_CFLAGS)
 jsbsim.srcs 		+= $(fbw_srcs) $(ap_srcs)
 
 jsbsim.CFLAGS 		+= -DSITL
-jsbsim.srcs 		+= $(SIMDIR)/sim_ac_jsbsim.c $(SIMDIR)/sim_ac_fw.c
+jsbsim.srcs 		+= $(SIMDIR)/sim_ac_jsbsim.c $(SIMDIR)/sim_ac_fw.c $(SIMDIR)/sim_ac_flightgear.c
 
 # external libraries
-jsbsim.CFLAGS 		+= -I$(SIMDIR) -I/usr/include -I$(JSBSIM_INC) `pkg-config glib-2.0 --cflags`
+jsbsim.CFLAGS 		+= -I$(SIMDIR) -I/usr/include -I$(JSBSIM_INC) -I$(OCAMLLIBDIR) `pkg-config glib-2.0 --cflags`
 jsbsim.LDFLAGS		+= `pkg-config glib-2.0 --libs` -lm -lpcre -lglibivy -L/usr/lib -lJSBSim
 
 jsbsim.CFLAGS 		+= -DDOWNLINK -DDOWNLINK_TRANSPORT=IvyTransport
-jsbsim.srcs 		+= downlink.c $(SRC_FIRMWARE)/datalink.c $(SRC_ARCH)/jsbsim_hw.c $(SRC_ARCH)/jsbsim_gps.c $(SRC_ARCH)/ivy_transport.c $(SRC_ARCH)/jsbsim_transport.c
+jsbsim.srcs 		+= downlink.c $(SRC_FIRMWARE)/datalink.c $(SRC_ARCH)/jsbsim_hw.c $(SRC_ARCH)/jsbsim_ir.c $(SRC_ARCH)/jsbsim_gps.c $(SRC_ARCH)/ivy_transport.c $(SRC_ARCH)/jsbsim_transport.c
+
+jsbsim.srcs 		+= subsystems/settings.c
+jsbsim.srcs 		+= $(SRC_ARCH)/subsystems/settings_arch.c
 
 ######################################################################
 ##

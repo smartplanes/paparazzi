@@ -15,6 +15,7 @@ SRC_FIXEDWING_TEST=$(SRC_FIXEDWING)/
 
 SRC_FIRMWARE=firmwares/fixedwing
 SRC_SUBSYSTEMS=subsystems
+SRC_MODULES=modules
 
 FIXEDWING_INC = -I$(SRC_FIRMWARE) -I$(SRC_FIXEDWING)
 
@@ -35,6 +36,9 @@ ifeq ($(TARGET),$(ACTUATOR_TARGET))
   ifeq ($(ACTUATORS),)
 
     ifeq ($(BOARD),lisa_l)
+      include $(CFG_SHARED)/actuators_direct.makefile
+    endif
+    ifeq ($(BOARD),lisa_m)
       include $(CFG_SHARED)/actuators_direct.makefile
     endif
 

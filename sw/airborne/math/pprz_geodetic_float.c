@@ -3,6 +3,9 @@
 #include "pprz_algebra_float.h"
 #include <math.h>
 
+/* for ecef_of_XX functions the double versions are needed */
+#include "pprz_geodetic_double.h"
+
 void ltp_def_from_ecef_f(struct LtpDef_f* def, struct EcefCoor_f* ecef) {
 
   /* store the origin of the tangeant plane       */
@@ -16,7 +19,7 @@ void ltp_def_from_ecef_f(struct LtpDef_f* def, struct EcefCoor_f* ecef) {
   const float cos_lon = cosf(def->lla.lon);
   def->ltp_of_ecef.m[0] = -sin_lon;
   def->ltp_of_ecef.m[1] =  cos_lon;
-  def->ltp_of_ecef.m[2] =  0.;
+  def->ltp_of_ecef.m[2] =  0.; /* this element is always zero http://en.wikipedia.org/wiki/Geodetic_system#From_ECEF_to_ENU */
   def->ltp_of_ecef.m[3] = -sin_lat*cos_lon;
   def->ltp_of_ecef.m[4] = -sin_lat*sin_lon;
   def->ltp_of_ecef.m[5] =  cos_lat;
@@ -26,14 +29,28 @@ void ltp_def_from_ecef_f(struct LtpDef_f* def, struct EcefCoor_f* ecef) {
 
 }
 
-#if 0
-void init_ltp_ref_from_lla_f(struct LtpRef_f* def, struct LlaCoor_f* ref_pos) {
-  def->lla.lon = ref_pos->lon;
-  def->lla.lat = ref_pos->lat;
-  /* compute ecef */
+void ltp_def_from_lla_f(struct LtpDef_f* def, struct LlaCoor_f* lla) {
+  /* store the origin of the tangeant plane */
+  LLA_COPY(def->lla, *lla);
+  /* compute the ecef representation of the origin */
+  ecef_of_lla_f(&def->ecef, &def->lla);
 
+  /* store the rotation matrix                    */
+  const float sin_lat = sinf(def->lla.lat);
+  const float cos_lat = cosf(def->lla.lat);
+  const float sin_lon = sinf(def->lla.lon);
+  const float cos_lon = cosf(def->lla.lon);
+
+  def->ltp_of_ecef.m[0] = -sin_lon;
+  def->ltp_of_ecef.m[1] =  cos_lon;
+  def->ltp_of_ecef.m[2] =  0.; /* this element is always zero http://en.wikipedia.org/wiki/Geodetic_system#From_ECEF_to_ENU */
+  def->ltp_of_ecef.m[3] = -sin_lat*cos_lon;
+  def->ltp_of_ecef.m[4] = -sin_lat*sin_lon;
+  def->ltp_of_ecef.m[5] =  cos_lat;
+  def->ltp_of_ecef.m[6] =  cos_lat*cos_lon;
+  def->ltp_of_ecef.m[7] =  cos_lat*sin_lon;
+  def->ltp_of_ecef.m[8] =  sin_lat;
 }
-#endif
 
 void enu_of_ecef_point_f(struct EnuCoor_f* enu, struct LtpDef_f* def, struct EcefCoor_f* ecef) {
   struct EcefCoor_f delta;
@@ -58,21 +75,79 @@ void ned_of_ecef_vect_f(struct NedCoor_f* ned, struct LtpDef_f* def, struct Ecef
   ENU_OF_TO_NED(*ned, enu);
 }
 
-/* not enought precision with float - use double */
-# if 0
+void enu_of_lla_point_f(struct EnuCoor_f* enu, struct LtpDef_f* def, struct LlaCoor_f* lla) {
+  struct EcefCoor_f ecef;
+  ecef_of_lla_f(&ecef,lla);
+  enu_of_ecef_point_f(enu,def,&ecef);
+}
+
+void ned_of_lla_point_f(struct NedCoor_f* ned, struct LtpDef_f* def, struct LlaCoor_f* lla) {
+  struct EcefCoor_f ecef;
+  ecef_of_lla_f(&ecef,lla);
+  ned_of_ecef_point_f(ned,def,&ecef);
+}
+
+/*
+ * not enought precision with float - use double
+ */
 void ecef_of_enu_point_f(struct EcefCoor_f* ecef, struct LtpDef_f* def, struct EnuCoor_f* enu) {
-  MAT33_VECT3_TRANSP_MUL(*ecef, def->ltp_of_ecef.m, *enu);
-  VECT3_ADD(*ecef, def->ecef);
+  /* convert used floats to double */
+  struct DoubleMat33 ltp_of_ecef_d;
+  ltp_of_ecef_d.m[0] = (double) def->ltp_of_ecef.m[0];
+  ltp_of_ecef_d.m[1] = (double) def->ltp_of_ecef.m[1];
+  ltp_of_ecef_d.m[2] = (double) def->ltp_of_ecef.m[2];
+  ltp_of_ecef_d.m[3] = (double) def->ltp_of_ecef.m[3];
+  ltp_of_ecef_d.m[4] = (double) def->ltp_of_ecef.m[4];
+  ltp_of_ecef_d.m[5] = (double) def->ltp_of_ecef.m[5];
+  ltp_of_ecef_d.m[6] = (double) def->ltp_of_ecef.m[6];
+  ltp_of_ecef_d.m[7] = (double) def->ltp_of_ecef.m[7];
+  ltp_of_ecef_d.m[8] = (double) def->ltp_of_ecef.m[8];
+  struct EnuCoor_f enu_d;
+  enu_d.x = (double) enu->x;
+  enu_d.y = (double) enu->y;
+  enu_d.z = (double) enu->z;
+
+  /* compute in double */
+  struct EcefCoor_d ecef_d;
+  MAT33_VECT3_TRANSP_MUL(ecef_d, ltp_of_ecef_d, enu_d);
+
+  /* convert result back to float and add it*/
+  ecef->x = (float) ecef_d.x + def->ecef.x;
+  ecef->y = (float) ecef_d.y + def->ecef.y;
+  ecef->z = (float) ecef_d.z + def->ecef.z;
 }
 
 void ecef_of_ned_point_f(struct EcefCoor_f* ecef, struct LtpDef_f* def, struct NedCoor_f* ned) {
   struct EnuCoor_f enu;
   ENU_OF_TO_NED(enu, *ned);
-  ecef_of_enu_pos_f(ecef, def, &enu);
+  ecef_of_enu_point_f(ecef, def, &enu);
 }
 
 void ecef_of_enu_vect_f(struct EcefCoor_f* ecef, struct LtpDef_f* def, struct EnuCoor_f* enu) {
-  MAT33_VECT3_TRANSP_MUL(*ecef, def->ltp_of_ecef.m, *enu);
+  /* convert used floats to double */
+  struct DoubleMat33 ltp_of_ecef_d;
+  ltp_of_ecef_d.m[0] = (double) def->ltp_of_ecef.m[0];
+  ltp_of_ecef_d.m[1] = (double) def->ltp_of_ecef.m[1];
+  ltp_of_ecef_d.m[2] = (double) def->ltp_of_ecef.m[2];
+  ltp_of_ecef_d.m[3] = (double) def->ltp_of_ecef.m[3];
+  ltp_of_ecef_d.m[4] = (double) def->ltp_of_ecef.m[4];
+  ltp_of_ecef_d.m[5] = (double) def->ltp_of_ecef.m[5];
+  ltp_of_ecef_d.m[6] = (double) def->ltp_of_ecef.m[6];
+  ltp_of_ecef_d.m[7] = (double) def->ltp_of_ecef.m[7];
+  ltp_of_ecef_d.m[8] = (double) def->ltp_of_ecef.m[8];
+  struct EnuCoor_f enu_d;
+  enu_d.x = (double) enu->x;
+  enu_d.y = (double) enu->y;
+  enu_d.z = (double) enu->z;
+
+  /* compute in double */
+  struct EcefCoor_d ecef_d;
+  MAT33_VECT3_TRANSP_MUL(ecef_d, ltp_of_ecef_d, enu_d);
+
+  /* convert result back to float*/
+  ecef->x = (float) ecef_d.x;
+  ecef->y = (float) ecef_d.y;
+  ecef->z = (float) ecef_d.z;
 }
 
 void ecef_of_ned_vect_f(struct EcefCoor_f* ecef, struct LtpDef_f* def, struct NedCoor_f* ned) {
@@ -80,7 +155,7 @@ void ecef_of_ned_vect_f(struct EcefCoor_f* ecef, struct LtpDef_f* def, struct Ne
   ENU_OF_TO_NED(enu, *ned);
   ecef_of_enu_vect_f(ecef, def, &enu);
 }
-#endif
+/* end use double versions */
 
 
 
@@ -140,3 +215,88 @@ void ecef_of_lla_f(struct EcefCoor_f* out, struct LlaCoor_f* in) {
   out->z = (a_chi*(1. - e2) + in->alt) * sin_lat;
 }
 
+
+
+
+#include "math/pprz_geodetic_utm.h"
+
+struct complex { float re; float im; };
+#define CScal(k, z) { z.re *= k;  z.im *= k; }
+#define CAdd(z1, z2) { z2.re += z1.re;  z2.im += z1.im; }
+#define CSub(z1, z2) { z2.re -= z1.re;  z2.im -= z1.im; }
+#define CI(z) { float tmp = z.re; z.re = - z.im; z.im = tmp; }
+#define CExp(z) { float e = exp(z.re); z.re = e*cos(z.im); z.im = e*sin(z.im); }
+/* Expanded #define CSin(z) { CI(z); struct complex _z = {-z.re, -z.im}; CExp(z); CExp(_z); CSub(_z, z); CScal(-0.5, z); CI(z); } */
+
+#define CSin(z) { CI(z); struct complex _z = {-z.re, -z.im}; float e = exp(z.re); float cos_z_im = cos(z.im); z.re = e*cos_z_im; float sin_z_im = sin(z.im); z.im = e*sin_z_im; _z.re = cos_z_im/e; _z.im = -sin_z_im/e; CSub(_z, z); CScal(-0.5, z); CI(z); }
+
+
+static inline float isometric_latitude_f(float phi, float e) {
+  return log (tan (M_PI_4 + phi / 2.0)) - e / 2.0 * log((1.0 + e * sin(phi)) / (1.0 - e * sin(phi)));
+}
+
+static inline float isometric_latitude_fast_f(float phi) {
+  return log (tan (M_PI_4 + phi / 2.0));
+}
+
+static inline float inverse_isometric_latitude_f(float lat, float e, float epsilon) {
+  float exp_l = exp(lat);
+  float phi0 = 2 * atan(exp_l) - M_PI_2;
+  float phi_;
+  uint8_t max_iter = 3; /* To be sure to return */
+
+  do {
+    phi_ = phi0;
+    float sin_phi = e * sin(phi_);
+    phi0 = 2 * atan (pow((1 + sin_phi) / (1. - sin_phi), e/2.) * exp_l) - M_PI_2;
+    max_iter--;
+  } while (max_iter && fabs(phi_ - phi0) > epsilon);
+  return phi0;
+}
+
+void utm_of_lla_f(struct UtmCoor_f* utm, struct LlaCoor_f* lla) {
+  float lambda_c = LambdaOfUtmZone(utm->zone);
+  float ll = isometric_latitude_f(lla->lat , E);
+  float dl = lla->lon - lambda_c;
+  float phi_ = asin(sin(dl) / cosh(ll));
+  float ll_ = isometric_latitude_fast_f(phi_);
+  float lambda_ = atan(sinh(ll) / cos(dl));
+  struct complex z_ = { lambda_,  ll_ };
+  CScal(serie_coeff_proj_mercator[0], z_);
+  uint8_t k;
+  for(k = 1; k < 3; k++) {
+    struct complex z = { lambda_,  ll_ };
+    CScal(2*k, z);
+    CSin(z);
+    CScal(serie_coeff_proj_mercator[k], z);
+    CAdd(z, z_);
+  }
+  CScal(N, z_);
+  utm->east = DELTA_EAST + z_.im;
+  utm->north = DELTA_NORTH + z_.re;
+}
+
+void lla_of_utm_f(struct LlaCoor_f* lla, struct UtmCoor_f* utm) {
+  float scale = 1 / N / serie_coeff_proj_mercator[0];
+  float real = (utm->north - DELTA_NORTH) * scale;
+  float img = (utm->east - DELTA_EAST) * scale;
+  struct complex z = { real, img };
+
+  uint8_t k;
+  for(k = 1; k < 2; k++) {
+    struct complex z_ = { real, img };
+    CScal(2*k, z_);
+    CSin(z_);
+    CScal(serie_coeff_proj_mercator_inverse[k], z_);
+    CSub(z_, z);
+  }
+
+  float lambda_c = LambdaOfUtmZone(utm->zone);
+  lla->lon = lambda_c + atan (sinh(z.im) / cos(z.re));
+  float phi_ = asin (sin(z.re) / cosh(z.im));
+  float il = isometric_latitude_fast_f(phi_);
+  lla->lat = inverse_isometric_latitude_f(il, E, 1e-8);
+
+  // copy alt above reference ellipsoid
+  lla->alt = utm->alt;
+}

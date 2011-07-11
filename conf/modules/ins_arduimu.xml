@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 <!DOCTYPE module SYSTEM "module.dtd">
 
 <module name="ins_arduimu" dir="ins">
@@ -13,3 +14,22 @@
   </makefile>
 </module>
 
+=======
+<!DOCTYPE module SYSTEM "module.dtd">
+
+<module name="ins_ArduIMU" dir="ins">
+  <header>
+    <file name="ins_arduimu.h"/>
+  </header>
+  <init fun="ArduIMU_init()"/>
+  <periodic fun="ArduIMU_periodic()" freq="15" autorun="TRUE"/>		<!-- 15 ist soll -->
+  <periodic fun="ArduIMU_periodicGPS()" freq="8" autorun="TRUE"/>       <!--  8 ist soll -->
+  <makefile target="ap">
+    <file name="ins_arduimu.c"/>
+  </makefile>
+  <makefile target="sim">
+    <file_arch name="ins_arduimu.c"/>
+  </makefile>
+</module>
+
+>>>>>>> f51606781f604f0de390e73a4b2f11b7cea59cdb

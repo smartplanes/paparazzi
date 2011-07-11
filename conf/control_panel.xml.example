@@ -53,6 +53,10 @@
       <arg flag="-b" variable="ivy_bus"/>
     </program>
 
+    <program name="Joystick" command="sw/ground_segment/joystick/input2ivy">
+      <arg flag="-b" variable="ivy_bus"/>
+    </program>
+
     <program name="Hardware in the Loop" command="sw/simulator/simhitl">
       <arg flag="-fbw" variable="fbw_serial_port"/>
       <arg flag="-ap" variable="ap_serial_port"/>
@@ -63,6 +67,11 @@
     </program>
 
     <program name="Http Server" command="sw/ground_segment/tmtc/boa"/>
+
+    <program name="Weather Station" command="sw/ground_segment/misc/davis2ivy">
+      <arg flag="-b" variable="ivy_bus"/>
+      <arg flag="-d" constant="/dev/ttyUSB1"/>
+    </program>
  </section>
 
 

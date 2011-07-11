@@ -26,8 +26,6 @@
 CFG_SHARED=$(PAPARAZZI_SRC)/conf/autopilot/subsystems/shared
 CFG_ROTORCRAFT=$(PAPARAZZI_SRC)/conf/autopilot/subsystems/rotorcraft
 
-SRC_BOOZ=booz
-SRC_BOOZ_ARCH=$(SRC_BOOZ)/arch/$(ARCH)
 SRC_BOOZ_TEST=$(SRC_BOOZ)/test
 SRC_BOOZ_PRIV=booz_priv
 
@@ -39,7 +37,7 @@ SRC_ARCH=arch/$(ARCH)
 
 CFG_BOOZ=$(PAPARAZZI_SRC)/conf/autopilot/
 
-ROTORCRAFT_INC = -I$(SRC_FIRMWARE) -I$(SRC_BOOZ) -I$(SRC_BOOZ_ARCH) -I$(SRC_BOARD)
+ROTORCRAFT_INC = -I$(SRC_FIRMWARE) -I$(SRC_BOARD)
 
 
 ap.ARCHDIR = $(ARCH)
@@ -50,6 +48,11 @@ ap.CFLAGS += -DBOARD_CONFIG=$(BOARD_CFG) -DPERIPHERALS_AUTO_INIT
 ap.srcs    = $(SRC_FIRMWARE)/main.c
 ap.srcs   += mcu.c
 ap.srcs   += $(SRC_ARCH)/mcu_arch.c
+
+#
+# Math functions
+#
+$(TARGET).srcs += math/pprz_geodetic_int.c math/pprz_geodetic_float.c math/pprz_geodetic_double.c math/pprz_trig_int.c
 
 ifeq ($(ARCH), stm32)
 ap.srcs += lisa/plug_sys.c
@@ -93,10 +96,15 @@ endif
 # or
 # include subsystems/rotorcraft/telemetry_xbee_api.makefile
 #
+ap.srcs += subsystems/settings.c
+ap.srcs += $(SRC_ARCH)/subsystems/settings_arch.c
 ap.srcs += $(SRC_ARCH)/mcu_periph/uart_arch.c
 
+# I2C is needed for speed controllers and barometers on lisa
+ap.srcs += mcu_periph/i2c.c
+ap.srcs += $(SRC_ARCH)/mcu_periph/i2c_arch.c
 
-ap.srcs += $(SRC_BOOZ)/booz2_commands.c
+ap.srcs += $(SRC_FIRMWARE)/commands.c
 
 #
 # Radio control choice
@@ -131,26 +139,32 @@ ap.srcs += $(SRC_BOOZ)/booz2_commands.c
 #
 ap.srcs += $(SRC_BOARD)/baro_board.c
 ifeq ($(BOARD), booz)
-ap.CFLAGS += -DROTORCRAFT_BARO_LED=$(BARO_LED) -DBOOZ2_ANALOG_BARO_PERIOD='SYS_TICS_OF_SEC((1./100.))'
+ap.CFLAGS += -DROTORCRAFT_BARO_LED=$(BARO_LED)
 else ifeq ($(BOARD), lisa_l)
 ap.CFLAGS += -DUSE_I2C2
-ap.srcs += mcu_periph/i2c.c
-ap.srcs += $(SRC_ARCH)/mcu_periph/i2c_arch.c
 endif
 
 #
 # Analog Backend
 #
+
 ifeq ($(ARCH), lpc21)
-ap.CFLAGS += -DBOOZ2_ANALOG_BATTERY_PERIOD='SYS_TICS_OF_SEC((1./10.))'
-ap.srcs += $(SRC_FIRMWARE)/battery.c
 ap.CFLAGS += -DADC0_VIC_SLOT=2
 ap.CFLAGS += -DADC1_VIC_SLOT=3
-ap.srcs += $(SRC_BOOZ)/booz2_analog.c \
-		   $(SRC_BOOZ_ARCH)/booz2_analog_hw.c
+ap.CFLAGS += -DUSE_ADC
+ap.srcs   += $(SRC_ARCH)/mcu_periph/adc_arch.c
+ap.srcs   += subsystems/electrical.c
+# baro has variable offset amplifier on booz board
+ap.CFLAGS += -DUSE_DAC
+ap.srcs   += $(SRC_ARCH)/mcu_periph/dac_arch.c
 else ifeq ($(ARCH), stm32)
-ap.srcs += lisa/lisa_analog_plug.c
+ap.CFLAGS += -DUSE_ADC
+ap.CFLAGS += -DUSE_AD1 -DUSE_AD1_1 -DUSE_AD1_2 -DUSE_AD1_3 -DUSE_AD1_4
+ap.CFLAGS += -DUSE_ADC1_2_IRQ_HANDLER
+ap.srcs   += $(SRC_ARCH)/mcu_periph/adc_arch.c
+ap.srcs   += subsystems/electrical.c
 endif
+
 
 
 #
@@ -174,23 +188,14 @@ endif
 
 ap.srcs += $(SRC_FIRMWARE)/autopilot.c
 
-ap.srcs += math/pprz_trig_int.c
 ap.srcs += $(SRC_FIRMWARE)/stabilization.c
 ap.srcs += $(SRC_FIRMWARE)/stabilization/stabilization_rate.c
-
-
-ap.CFLAGS += -DSTABILISATION_ATTITUDE_TYPE_INT
-ap.CFLAGS += -DSTABILISATION_ATTITUDE_H=\"stabilization/stabilization_attitude_int.h\"
-ap.CFLAGS += -DSTABILISATION_ATTITUDE_REF_H=\"stabilization/stabilization_attitude_ref_euler_int.h\"
-ap.srcs += $(SRC_FIRMWARE)/stabilization/stabilization_attitude_ref_euler_int.c
-ap.srcs += $(SRC_FIRMWARE)/stabilization/stabilization_attitude_euler_int.c
 
 ap.CFLAGS += -DUSE_NAVIGATION
 ap.srcs += $(SRC_FIRMWARE)/guidance/guidance_h.c
 ap.srcs += $(SRC_FIRMWARE)/guidance/guidance_v.c
 
 ap.srcs += $(SRC_SUBSYSTEMS)/ins.c
-ap.srcs += math/pprz_geodetic_int.c math/pprz_geodetic_float.c math/pprz_geodetic_double.c
 
 #
 # INS choice
@@ -205,7 +210,7 @@ ap.srcs += $(SRC_SUBSYSTEMS)/ins/vf_float.c
 ap.CFLAGS += -DUSE_VFF -DDT_VFILTER='(1./$(PERIODIC_FREQUENCY).)'
 
 ap.srcs += $(SRC_FIRMWARE)/navigation.c
-
+ap.srcs += subsystems/navigation/common_flight_plan.c
 
 #
 # FMS  choice

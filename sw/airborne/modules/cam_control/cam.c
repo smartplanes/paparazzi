@@ -28,7 +28,7 @@
 
 #include <math.h>
 #include "cam.h"
-#include "subsystems/navigation/common_nav.h"
+#include "subsystems/navigation/common_nav.h" //needed for WaypointX, WaypointY and ground_alt
 #include "autopilot.h"
 #include "generated/flight_plan.h"
 #include "estimator.h"
@@ -56,7 +56,7 @@ float test_cam_estimator_hspeed_dir;
 #endif
 
 #ifdef CAM_TILT_NEUTRAL
-#if (CAM_TILT_MAX == CAM_TILT_NEUTRAL)
+#if ((CAM_TILT_MAX) == (CAM_TILT_NEUTRAL))
 #error CAM_TILT_MAX has to be different from CAM_TILT_NEUTRAL
 #endif
 #if (CAM_TILT_NEUTRAL == CAM_TILT_MIN)
@@ -98,7 +98,11 @@ void cam_waypoint_target(void);
 void cam_ac_target(void);
 
 void cam_init( void ) {
+#ifdef CAM_MODE0
+  cam_mode = CAM_MODE0;
+#else
   cam_mode = CAM_MODE_OFF;
+#endif
 }
 
 void cam_periodic( void ) {
@@ -183,15 +187,15 @@ void cam_nadir( void ) {
   cam_target_x = estimator_x;
   cam_target_y = estimator_y;
 #endif
-  cam_target_alt = 0;
+  cam_target_alt = -10;
   cam_target();
 }
 
 
 void cam_waypoint_target( void ) {
   if (cam_target_wp < nb_waypoint) {
-    cam_target_x = waypoints[cam_target_wp].x;
-    cam_target_y = waypoints[cam_target_wp].y;
+    cam_target_x = WaypointX(cam_target_wp);
+    cam_target_y = WaypointY(cam_target_wp);
   }
   cam_target_alt = ground_alt;
   cam_target();

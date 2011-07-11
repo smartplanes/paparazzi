@@ -23,7 +23,7 @@
 
 #include "subsystems/imu.h"
 #include "subsystems/sensors/baro.h"
-#include "booz_gps.h"
+#include "subsystems/gps.h"
 
 #include "generated/airframe.h"
 #include "math/pprz_algebra_int.h"
@@ -70,7 +70,7 @@ bool_t ins_hf_realign;
 int32_t ins_qfe;
 bool_t  ins_baro_initialised;
 int32_t ins_baro_alt;
-#ifdef BOOZ2_SONAR
+#ifdef USE_SONAR
 bool_t  ins_update_on_agl;
 int32_t ins_sonar_offset;
 #endif
@@ -94,8 +94,8 @@ void ins_init() {
   struct LlaCoor_i llh; /* Height above the ellipsoid */
   llh.lat = INT32_RAD_OF_DEG(NAV_LAT0);
   llh.lon = INT32_RAD_OF_DEG(NAV_LON0);
-  //llh.alt = NAV_ALT0 - ins_ltp_def.hmsl + ins_ltp_def.lla.alt;
-  llh.alt = NAV_ALT0 + NAV_HMSL0;
+  /* NAV_ALT0 = ground alt above msl, NAV_MSL0 = geoid-height (msl) over ellipsoid */
+  llh.alt = NAV_ALT0 + NAV_MSL0;
 
   struct EcefCoor_i nav_init;
   ecef_of_lla_i(&nav_init, &llh);
@@ -190,7 +190,7 @@ void ins_update_baro() {
     if (ins_vf_realign) {
       ins_vf_realign = FALSE;
       ins_qfe = baro.absolute;
-#ifdef BOOZ2_SONAR
+#ifdef USE_SONAR
       ins_sonar_offset = sonar_meas;
 #endif
       vff_realign(0.);
@@ -209,15 +209,15 @@ void ins_update_baro() {
 
 void ins_update_gps(void) {
 #ifdef USE_GPS
-  if (booz_gps_state.fix == BOOZ2_GPS_FIX_3D) {
+  if (gps.fix == GPS_FIX_3D) {
     if (!ins_ltp_initialised) {
-      ltp_def_from_ecef_i(&ins_ltp_def, &booz_gps_state.ecef_pos);
-      ins_ltp_def.lla.alt = booz_gps_state.lla_pos.alt;
-      ins_ltp_def.hmsl = booz_gps_state.hmsl;
+      ltp_def_from_ecef_i(&ins_ltp_def, &gps.ecef_pos);
+      ins_ltp_def.lla.alt = gps.lla_pos.alt;
+      ins_ltp_def.hmsl = gps.hmsl;
       ins_ltp_initialised = TRUE;
     }
-    ned_of_ecef_point_i(&ins_gps_pos_cm_ned, &ins_ltp_def, &booz_gps_state.ecef_pos);
-    ned_of_ecef_vect_i(&ins_gps_speed_cm_s_ned, &ins_ltp_def, &booz_gps_state.ecef_vel);
+    ned_of_ecef_point_i(&ins_gps_pos_cm_ned, &ins_ltp_def, &gps.ecef_pos);
+    ned_of_ecef_vect_i(&ins_gps_speed_cm_s_ned, &ins_ltp_def, &gps.ecef_vel);
 #ifdef USE_HFF
     VECT2_ASSIGN(ins_gps_pos_m_ned, ins_gps_pos_cm_ned.x, ins_gps_pos_cm_ned.y);
     VECT2_SDIV(ins_gps_pos_m_ned, ins_gps_pos_m_ned, 100.);
@@ -267,13 +267,13 @@ void ins_update_gps(void) {
 }
 
 void ins_update_sonar() {
-#if defined BOOZ2_SONAR && defined USE_VFF
+#if defined USE_SONAR && defined USE_VFF
   static int32_t sonar_filtered = 0;
   sonar_filtered = (sonar_meas + 2*sonar_filtered) / 3;
   /* update baro_qfe assuming a flat ground */
-  if (ins_update_on_agl && booz2_analog_baro_status == BOOZ2_ANALOG_BARO_RUNNING) {
+  if (ins_update_on_agl && baro.status == BS_RUNNING) {
     int32_t d_sonar = (((int32_t)sonar_filtered - ins_sonar_offset) * INS_SONAR_SENS_NUM) / INS_SONAR_SENS_DEN;
-    ins_qfe = (int32_t)booz2_analog_baro_value + (d_sonar * (INS_BARO_SENS_DEN))/INS_BARO_SENS_NUM;
+    ins_qfe = baro.absolute + (d_sonar * (INS_BARO_SENS_DEN))/INS_BARO_SENS_NUM;
   }
 #endif
 }
